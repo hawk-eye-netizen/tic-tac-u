@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe — Multiplayer</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent-x: #f72585;
+    --accent-o: #4cc9f0;
+    --line: #3a3a5c;
+    --text: #eaeaea;
+    --muted: #9a9ab0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top, #24244e, var(--bg));
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    padding: 20px;
+  }
+  .layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .container { text-align: center; padding: 12px; max-width: 420px; }
+  h1 { font-size: 2.2rem; margin-bottom: 4px; letter-spacing: 1px; }
+  .subtitle { color: var(--muted); margin-bottom: 20px; font-size: 0.95rem; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  input[type="text"] {
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    width: 100%;
+  }
+  input[type="text"]:focus { border-color: var(--accent-o); }
+
+  .link-box {
+    display: flex;
+    gap: 8px;
+    background: var(--card);
+    padding: 10px;
+    border-radius: 10px;
+    margin: 16px 0;
+  }
+  .link-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+  }
+
+  .status { font-size: 1.15rem; margin-bottom: 18px; min-height: 26px; font-weight: 600; }
+  .you-are { color: var(--muted); font-size: 0.9rem; margin-bottom: 8px; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    grid-template-rows: repeat(3, 100px);
+    gap: 8px;
+    background: var(--line);
+    padding: 8px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    margin: 0 auto;
+  }
+  .cell {
+    background: var(--card);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .cell:hover:not(.taken) { background: #1f2b52; }
+  .cell.taken { cursor: default; }
+  .cell.x { color: var(--accent-x); }
+  .cell.o { color: var(--accent-o); }
+  .cell.win { animation: pop 0.3s ease; background: #22305e; }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+  .controls { margin-top: 22px; display: flex; gap: 12px; justify-content: center; }
+  button {
+    background: var(--accent-x);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.15s ease;
+  }
+  button:hover { opacity: 0.9; }
+  button:active { transform: scale(0.97); }
+  button.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+
+  .pulse { animation: blink 1.4s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Chat panel */
+  .chat-panel {
+    display: none;
+    width: 280px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    height: 460px;
+    flex-direction: column;
+  }
+  .chat-panel.active { display: flex; }
+  .chat-title { font-weight: 700; margin-bottom: 10px; text-align: left; }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-right: 4px;
+  }
+  .chat-msg {
+    text-align: left;
+    background: #1f2b52;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    word-wrap: break-word;
+  }
+  .chat-msg .name {
+    font-weight: 700;
+    font-size: 0.78rem;
+    margin-bottom: 2px;
+    display: block;
+  }
+  .chat-msg.me { background: #3a1f4d; }
+  .chat-msg.me .name { color: var(--accent-x); }
+  .chat-msg.them .name { color: var(--accent-o); }
+  .chat-input-row { display: flex; gap: 6px; }
+  .chat-input-row input {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 8px 10px;
+  }
+  .chat-input-row button { padding: 8px 14px; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="container">
+    <h1>Tic Tac Toe</h1>
+    <div class="subtitle">Real-time 1v1 — share your link to play</div>
+
+    <!-- Step 0: pick a username -->
+    <div class="panel active" id="namePanel">
+      <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
+      <div class="controls">
+        <button id="nameContinueBtn">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 1: create or waiting -->
+    <div class="panel" id="setup">
+      <button id="createBtn">Create a game &amp; get a link</button>
+    </div>
+
+    <div class="panel" id="waiting">
+      <div class="status pulse">Waiting for opponent to join…</div>
+      <div class="link-box">
+        <input id="linkInput" readonly>
+        <button id="copyBtn">Copy</button>
+      </div>
+    </div>
+
+    <!-- Game itself -->
+    <div id="game" style="display:none">
+      <div class="you-are" id="youAre"></div>
+      <div class="status" id="status">Loading…</div>
+      <div class="board" id="board"></div>
+      <div class="controls">
+        <button id="resetBtn">New Round</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-title">Chat</div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="Say something…" maxlength="200">
+      <button id="chatSendBtn">Send</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  // ======================================================
+  // 1. PASTE YOUR FIREBASE CONFIG HERE
+  // ======================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDIckE9v7BCGl6lENv12Rx_Agbvy_OKAHw",
+    authDomain: "thefirst-7aaae.firebaseapp.com",
+    databaseURL: "https://thefirst-7aaae-default-rtdb.firebaseio.com",
+    projectId: "thefirst-7aaae",
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const WIN_LINES = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  const namePanel = document.getElementById('namePanel');
+  const setupEl = document.getElementById('setup');
+  const waitingEl = document.getElementById('waiting');
+  const gameEl = document.getElementById('game');
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const youAreEl = document.getElementById('youAre');
+  const linkInput = document.getElementById('linkInput');
+  const chatPanel = document.getElementById('chatPanel');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+
+  let roomId = null;
+  let mySymbol = null; // 'X' or 'O'
+  let myName = null;
+  let roomRef = null;
+
+  function emptyBoard() { return Array(9).fill(""); } // Firebase strips `null` values, so use "" for empty cells
+  function generateRoomId() { return Math.random().toString(36).substring(2, 8); }
+
+  function showPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    if (id) document.getElementById(id).classList.add('active');
+  }
+
+  function showGame() {
+    showPanel(null);
+    gameEl.style.display = 'block';
+  }
+
+  // ---------- Username step ----------
+  document.getElementById('nameContinueBtn').addEventListener('click', () => {
+    const val = document.getElementById('nameInput').value.trim();
+    if (!val) { document.getElementById('nameInput').focus(); return; }
+    myName = val;
+
+    const params = new URLSearchParams(window.location.search);
+    const existingRoom = params.get('room');
+    if (existingRoom) {
+      joinRoom(existingRoom);
+    } else {
+      showPanel('setup');
+    }
+  });
+
+  // ---------- Room creation / joining ----------
+  function createRoom() {
+    roomId = generateRoomId();
+    mySymbol = 'X';
+    roomRef = db.ref('rooms/' + roomId);
+    roomRef.set({
+      board: emptyBoard(),
+      turn: 'X',
+      players: { X: myName, O: null },
+      winner: null,
+      winLine: null,
+      chat: {}
+    });
+    // Clean up the whole room automatically once the creator disconnects,
+    // as long as no one else is present — prevents leftover data.
+    roomRef.onDisconnect().remove();
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('room', roomId);
+    window.history.replaceState({}, '', url);
+    linkInput.value = url.toString();
+    showPanel('waiting');
+    listenToRoom();
+    listenToChat();
+  }
+
+  function joinRoom(id) {
+    roomId = id;
+    roomRef = db.ref('rooms/' + roomId);
+    roomRef.once('value').then(snap => {
+      const data = snap.val();
+      if (!data) {
+        alert("This game link doesn't exist or has expired. Starting a new game instead.");
+        createRoom();
+        return;
+      }
+      if (!data.players.O) {
+        mySymbol = 'O';
+        roomRef.child('players/O').set(myName);
+      } else {
+        mySymbol = 'O'; // room full — basic fallback
+      }
+      showGame();
+      listenToRoom();
+      listenToChat();
+    });
+  }
+
+  function listenToRoom() {
+    roomRef.on('value', snap => {
+      const data = snap.val();
+      if (!data) return;
+      if (!data.board) data.board = emptyBoard(); // safety net for older/corrupted room data
+
+      if (data.players.X && data.players.O) {
+        showGame();
+      }
+
+      renderBoard(data.board, data.winLine);
+      updateStatus(data);
+    });
+  }
+
+  function renderBoard(board, winLine) {
+    boardEl.innerHTML = '';
+    board.forEach((val, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (val ? ' taken ' + val.toLowerCase() : '');
+      if (winLine && winLine.includes(i)) cell.classList.add('win');
+      cell.textContent = val || '';
+      cell.addEventListener('click', () => handleMove(i, board));
+      boardEl.appendChild(cell);
+    });
+  }
+
+  function updateStatus(data) {
+    const oppName = mySymbol === 'X' ? data.players.O : data.players.X;
+    youAreEl.textContent = `You are Player ${mySymbol} (${myName})`;
+    if (data.winner === 'draw') {
+      statusEl.textContent = "It's a draw!";
+    } else if (data.winner) {
+      statusEl.textContent = data.winner === mySymbol ? "You win! 🎉" : `${oppName || 'Opponent'} wins`;
+    } else if (!data.players.X || !data.players.O) {
+      statusEl.textContent = "Waiting for opponent…";
+    } else {
+      statusEl.textContent = data.turn === mySymbol ? "Your turn" : `Waiting for ${oppName}…`;
+    }
+  }
+
+  function checkWinner(board, player) {
+    return WIN_LINES.find(line => line.every(idx => board[idx] === player));
+  }
+
+  function handleMove(i, board) {
+    roomRef.once('value').then(snap => {
+      const data = snap.val();
+      if (data.winner) return;
+      if (data.turn !== mySymbol) return;
+      if (data.board[i]) return;
+
+      const newBoard = [...data.board];
+      newBoard[i] = mySymbol;
+      const winLine = checkWinner(newBoard, mySymbol);
+      const isDraw = !winLine && newBoard.every(c => c);
+
+      roomRef.update({
+        board: newBoard,
+        turn: mySymbol === 'X' ? 'O' : 'X',
+        winner: winLine ? mySymbol : (isDraw ? 'draw' : null),
+        winLine: winLine || null
+      });
+    });
+  }
+
+  document.getElementById('createBtn').addEventListener('click', createRoom);
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    linkInput.select();
+    navigator.clipboard.writeText(linkInput.value);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    roomRef.update({ board: emptyBoard(), turn: 'X', winner: null, winLine: null });
+  });
+
+  // ---------- Chat (ephemeral — lives only in the room node) ----------
+  function listenToChat() {
+    chatPanel.classList.add('active');
+    roomRef.child('chat').on('child_added', snap => {
+      const msg = snap.val();
+      const div = document.createElement('div');
+      div.className = 'chat-msg ' + (msg.sender === myName ? 'me' : 'them');
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'name';
+      nameSpan.textContent = msg.sender;
+      div.appendChild(nameSpan);
+      div.appendChild(document.createTextNode(msg.text));
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+  }
+
+  function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text || !roomRef) return;
+    roomRef.child('chat').push({ sender: myName, text, ts: Date.now() });
+    chatInput.value = '';
+  }
+
+  document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+  chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
+
+  // Pressing Enter on the name field submits too
+  document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('nameContinueBtn').click();
+  });
+</script>
+</body>
+</html>
