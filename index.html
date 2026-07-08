@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Tic Tac U — Multiplayer</title>
+<title>Tic Tac Toe — Multiplayer</title>
 <style>
   :root {
     --bg: #1a1a2e;
@@ -169,7 +169,7 @@
 <body>
 <div class="layout">
   <div class="container">
-    <h1>Tic Tac Toe</h1>
+    <h1>Tic Tac U</h1>
     <div class="subtitle">Real-time 1v1 — share your link to play</div>
 
     <!-- Step 0: pick a username -->
@@ -294,10 +294,6 @@
       winLine: null,
       chat: {}
     });
-    // Clean up the whole room automatically once the creator disconnects,
-    // as long as no one else is present — prevents leftover data.
-    roomRef.onDisconnect().remove();
-
     const url = new URL(window.location.href);
     url.searchParams.set('room', roomId);
     window.history.replaceState({}, '', url);
